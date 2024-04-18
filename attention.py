@@ -11,10 +11,15 @@ class UNETAttentionBlock(nn.Module):
         self.groupnorm = nn.GroupNorm(32, channels)
         self.conv_input = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
 
-        self.layernorm1 = nn.LayerNorm(channels)
+        self.ln1 = nn.LayerNorm(channels)
         self.self_attention = nn.MultiheadAttention(embed_dim=channels, num_heads=n_head, batch_first=True)
-        # no cross attention
-        # and no layernorm2 as a result
+        self.ln2 = nn.LayerNorm(channels)
+        self.feed_forward = nn.Sequential(
+            nn.Linear(channels, 4 * channels),
+            nn.ReLU(),
+            nn.Linear(4 * channels, channels),
+            nn.Dropout(0.2),
+        )
 
         self.conv_output = nn.Conv2d(channels, channels, kernel_size=1, padding=0)
 
@@ -34,10 +39,16 @@ class UNETAttentionBlock(nn.Module):
 
         # normalization + self attention with skip connection
         residue_short = x
-        x = self.layernorm1(x)
-        x += self.self_attention(x, x, x, need_weights=False)[0]
+        x = self.ln1(x)
+        x = self.self_attention(x, x, x, need_weights=False)[0]
         x += residue_short
         
+        # normalization + feed forward with skip connection
+        residue_short = x
+        x = self.ln2(x)
+        x = self.feed_forward(x)
+        x += residue_short
+
         # (B, H * W, C) -> (B, C, H * W)
         x = x.transpose(-1, -2)
 

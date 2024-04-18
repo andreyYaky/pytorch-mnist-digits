@@ -29,7 +29,7 @@ loss_fn = nn.NLLLoss()
 optimizer = torch.optim.AdamW(model.parameters(), lr=0.01)
 accuracy = torchmetrics.Accuracy(task='multiclass', num_classes=10).to(DEVICE)
 
-epochs = 100
+epochs = 1000
 batch_size = 100
 
 model.train()
